@@ -1,5 +1,5 @@
 # MyIA
- **My** **I**p **A**ddress
+ **My** **I**P **A**ddress
  
 ## Description
 Simple http server which returns requester IP address.
@@ -7,4 +7,7 @@ Simple http server which returns requester IP address.
 ## Parameters
 * `-l` - listen address, default `127.0.0.1:1234`
 * `-p` - listen path, default `/`
+* `-n` - returns IP address if only it contained 
+in provided network prefix (i.e. `10.0.0.0/8`)
+* `-o` - set provided value to `Access-Control-Allow-Origin` header
 
