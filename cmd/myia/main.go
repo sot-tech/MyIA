@@ -1,15 +1,17 @@
+// Package main starts http.Server with MyIA handler
 package main
 
 import (
 	"errors"
 	"flag"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"sot-te.ch/myia"
 	"syscall"
 	"time"
+
+	"sot-te.ch/myia"
 )
 
 var errNoAddress = errors.New("no listen address provided")
@@ -21,16 +23,18 @@ func main() {
 	flag.StringVar(&addr, "l", "127.0.0.1:1234", "Listen address")
 	flag.StringVar(&path, "p", "/", "Listen path")
 	flag.StringVar(&net, "n", "", "Filter retrieved IP with provided network (i.e. return only address from 10.0.0.0/8)")
-	flag.StringVar(&acao, "o", "*", "Set provided value to `Access-Control-Allow-Origin` header")
+	flag.StringVar(&acao, "o", "", "Set provided value to `Access-Control-Allow-Origin` header")
 	flag.Parse()
 
 	if len(addr) == 0 {
-		log.Fatal(errNoAddress)
+		fmt.Println(errNoAddress)
+		os.Exit(1)
 	}
 
 	h, err := myia.NewHandler(path, acao, net)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 	srv := &http.Server{
 		Addr:         addr,
@@ -41,15 +45,15 @@ func main() {
 	defer func(srv *http.Server) {
 		err := srv.Close()
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 	}(srv)
-	log.Println("Serving " + srv.Addr + " path " + path)
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	fmt.Println("Staring server", srv.Addr)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Println(err)
+			fmt.Println(err)
 			ch <- syscall.SIGABRT
 		}
 	}()

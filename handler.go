@@ -2,16 +2,21 @@
 package myia
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"path"
 )
+
+var errMalformedACAOURL = errors.New("malformed Access-Control-Allow-Origin URL")
 
 const (
 	httpAllowHeader = "Allow"
 	httpACAOHeader  = "Access-Control-Allow-Origin"
 	httpACAMHeader  = "Access-Control-Allow-Methods"
+	httpAll         = "*"
 )
 
 var httpMethods = []string{
@@ -34,6 +39,14 @@ func NewHandler(uPath, acao, net string) (http.Handler, error) {
 	}
 	uPath = path.Clean(uPath)
 
+	if len(acao) > 0 && acao != httpAll {
+		if u, err := url.Parse(acao); err != nil {
+			return nil, err
+		} else if !u.IsAbs() || len(u.Host) == 0 {
+			return nil, errMalformedACAOURL
+		}
+	}
+
 	var prefix netip.Prefix
 	if len(net) > 0 {
 		var err error
@@ -46,11 +59,10 @@ func NewHandler(uPath, acao, net string) (http.Handler, error) {
 		acao:   []string{acao},
 		prefix: prefix,
 	}, nil
-
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.RequestURI == "*" {
+	if r.RequestURI == httpAll {
 		if r.ProtoAtLeast(1, 1) {
 			w.Header()["Connection"] = []string{"close"}
 		}
@@ -62,17 +74,17 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(h.acao) > 0 && len(h.acao[0]) > 0 {
+		w.Header()[httpACAOHeader] = h.acao
+		w.Header()[httpACAMHeader] = httpMethods
+	}
 	switch r.Method {
 	case http.MethodOptions:
 		w.Header()[httpAllowHeader] = httpMethods
-		w.Header()[httpACAMHeader] = httpMethods
-		w.Header()[httpACAOHeader] = h.acao
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodHead:
-		w.Header()[httpACAOHeader] = h.acao
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		w.Header()[httpACAOHeader] = h.acao
 		w.WriteHeader(http.StatusOK)
 		if addrPort, err := netip.ParseAddrPort(r.RemoteAddr); err != nil {
 			log.Println(addrPort, err)
@@ -80,7 +92,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(addrPort.Addr().String()))
 		}
 	default:
-		w.Header()[httpAllowHeader] = h.acao
+		w.Header()[httpAllowHeader] = httpMethods
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
