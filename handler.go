@@ -1,4 +1,4 @@
-// Package myia contains http.ServeMux which returns requester IP address
+// Package myia contains http.Handler which returns requester IP address
 package myia
 
 import (
