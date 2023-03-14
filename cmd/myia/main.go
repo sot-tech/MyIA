@@ -19,11 +19,12 @@ var errNoAddress = errors.New("no listen address provided")
 const requestTimeout = time.Millisecond * 500
 
 func main() {
-	var addr, path, acao, net string
+	var addr, path, acao, net, header string
 	flag.StringVar(&addr, "l", "127.0.0.1:1234", "Listen address")
 	flag.StringVar(&path, "p", "/", "Listen path")
 	flag.StringVar(&net, "n", "", "Filter retrieved IP with provided network (i.e. return only address from 10.0.0.0/8)")
 	flag.StringVar(&acao, "o", "", "Set provided value to `Access-Control-Allow-Origin` header")
+	flag.StringVar(&header, "r", "", "Get value as client IP from provided HTTP header instead of HTTP remote address")
 	flag.Parse()
 
 	if len(addr) == 0 {
@@ -31,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	h, err := myia.NewHandler(path, acao, net)
+	h, err := myia.NewHandler(path, acao, net, header)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

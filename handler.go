@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"net/netip"
+	"net/textproto"
 	"net/url"
 	"path"
+	"strings"
 )
 
 var errMalformedACAOURL = errors.New("malformed Access-Control-Allow-Origin URL")
@@ -24,16 +26,18 @@ var httpMethods = []string{
 }
 
 type handler struct {
-	path   string
-	acao   []string
-	prefix netip.Prefix
+	path, ipHeader string
+	acao           []string
+	prefix         netip.Prefix
 }
 
 // NewHandler creates new IP detection http.Handler.
 // If acao parameter not provided, it will be set to `*`.
 // Non-empty net parameter will filter returned IP with provided
-// network prefix (i.e. 10.0.0.0/8)
-func NewHandler(uPath, acao, net string) (http.Handler, error) {
+// network prefix (i.e. 10.0.0.0/8).
+// Non-empty ipHeader parameter will fetch client IP from provided HTTP header.
+// If header value contains several values (or comma-separated), only first address is used.
+func NewHandler(uPath, acao, net, ipHeader string) (http.Handler, error) {
 	if !path.IsAbs(uPath) {
 		uPath = "/" + uPath
 	}
@@ -55,9 +59,10 @@ func NewHandler(uPath, acao, net string) (http.Handler, error) {
 		}
 	}
 	return &handler{
-		path:   uPath,
-		acao:   []string{acao},
-		prefix: prefix,
+		path:     uPath,
+		ipHeader: textproto.CanonicalMIMEHeaderKey(ipHeader),
+		acao:     []string{acao},
+		prefix:   prefix,
 	}, nil
 }
 
@@ -86,10 +91,31 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
 		w.WriteHeader(http.StatusOK)
-		if addrPort, err := netip.ParseAddrPort(r.RemoteAddr); err != nil {
-			log.Println(addrPort, err)
-		} else if !h.prefix.IsValid() || h.prefix.Contains(addrPort.Addr()) {
-			_, _ = w.Write([]byte(addrPort.Addr().String()))
+		var clientAddress string
+		if len(h.ipHeader) > 0 {
+			addrs := r.Header[h.ipHeader]
+			if len(addrs) > 0 {
+				clientAddress = addrs[0]
+				// some headers contain addresses separated by comma,
+				// we will get only first (nearest to client i.e. x-forwarded-for)
+				if commaIndex := strings.IndexRune(clientAddress, ','); commaIndex >= 0 {
+					clientAddress = clientAddress[:commaIndex]
+				}
+				clientAddress = strings.TrimSpace(clientAddress)
+			}
+		} else {
+			clientAddress = r.RemoteAddr
+		}
+		var addr netip.Addr
+		if len(clientAddress) > 0 {
+			if addrPort, err := netip.ParseAddrPort(clientAddress); err == nil {
+				addr = addrPort.Addr()
+			} else if addr, err = netip.ParseAddr(clientAddress); err != nil {
+				log.Println(clientAddress, err)
+			}
+			if addr.IsValid() && (!h.prefix.IsValid() || h.prefix.Contains(addr)) {
+				_, _ = w.Write([]byte(addr.String()))
+			}
 		}
 	default:
 		w.Header()[httpAllowHeader] = httpMethods
