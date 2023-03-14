@@ -32,7 +32,6 @@ type handler struct {
 }
 
 // NewHandler creates new IP detection http.Handler.
-// If acao parameter not provided, it will be set to `*`.
 // Non-empty net parameter will filter returned IP with provided
 // network prefix (i.e. 10.0.0.0/8).
 // Non-empty ipHeader parameter will fetch client IP from provided HTTP header.
