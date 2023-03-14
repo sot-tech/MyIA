@@ -22,8 +22,8 @@ func main() {
 	var addr, path, acao, net, header string
 	flag.StringVar(&addr, "l", "127.0.0.1:1234", "Listen address")
 	flag.StringVar(&path, "p", "/", "Listen path")
-	flag.StringVar(&net, "n", "", "Filter retrieved IP with provided network (i.e. return only address from 10.0.0.0/8)")
-	flag.StringVar(&acao, "o", "", "Set provided value to `Access-Control-Allow-Origin` header")
+	flag.StringVar(&net, "n", "", "Filter retrieved IP with provided network")
+	flag.StringVar(&acao, "o", "", "Set provided value to 'Access-Control-Allow-Origin' header")
 	flag.StringVar(&header, "r", "", "Get value as client IP from provided HTTP header instead of HTTP remote address")
 	flag.Parse()
 
