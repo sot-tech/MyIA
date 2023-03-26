@@ -13,5 +13,5 @@ in provided network prefix (i.e. `10.0.0.0/8`)
 * `-r` - get value as client IP from provided HTTP header 
 instead of HTTP remote address. May be useful if program runs 
 behind reverse-proxy. _Note_: only first (nearest) address will be 
-used as client address.
+used as client address. If header value not set, HTTP remote address used.
 

@@ -102,7 +102,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				clientAddress = strings.TrimSpace(clientAddress)
 			}
-		} else {
+		}
+		if len(clientAddress) == 0 {
 			clientAddress = r.RemoteAddr
 		}
 		var addr netip.Addr
